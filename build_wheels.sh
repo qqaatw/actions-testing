@@ -11,7 +11,7 @@ function repair_wheel {
 }
 
 
-cd /io
+#cd /io
 
 if [ ! -d aws-crt-python ] 
 then
@@ -37,5 +37,5 @@ done
 # Install packages and test
 for PYBIN in /opt/python/*/bin/; do
     "${PYBIN}/pip" install awscrt --no-index -f wheelhouse
-    (cd /io/aws-crt-python/; "${PYBIN}python" -m unittest discover --failfast --verbose)
+    (cd aws-crt-python/; "${PYBIN}python" -m unittest discover --failfast --verbose)
 done
