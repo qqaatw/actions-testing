@@ -1,0 +1,25 @@
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    container:
+      image: ${{ matrix.docker-image }}
+      env:
+        PLAT: ${{ matrix.platform }}
+      volumes:
+        - ${{ github.workspace }}:/io
+    strategy:
+      matrix:
+        include:
+          - docker-image: quay.io/pypa/musllinux_1_1_i686
+            platform: musllinux_1_1_i686
+          - docker-image: quay.io/pypa/musllinux_1_1_x86_64
+            platform: musllinux_1_1_x86_64
+          - docker-image: quay.io/pypa/musllinux_1_1_aarch64
+            platform: musllinux_1_1_aarch64
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build wheels
+        run: |
+          /io/build-wheels.sh
+          ls wheelhouse/
