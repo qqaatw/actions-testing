@@ -1,3 +1,6 @@
+#- docker-image: quay.io/pypa/musllinux_1_1_aarch64
+#  platform: musllinux_1_1_aarch64
+
 name: Build
 
 on: [workflow_dispatch]
@@ -19,8 +22,6 @@ jobs:
             platform: musllinux_1_1_i686
           - docker-image: quay.io/pypa/musllinux_1_1_x86_64
             platform: musllinux_1_1_x86_64
-          #- docker-image: quay.io/pypa/musllinux_1_1_aarch64
-          #  platform: musllinux_1_1_aarch64
     steps:
       - uses: actions/checkout@v1
       - name: Build wheels
