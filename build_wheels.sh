@@ -11,14 +11,22 @@ function repair_wheel {
 }
 
 
-# Install a system package required by our library
-yum install -y atlas-devel
+cd /io
 
-git clone https://github.com/awslabs/aws-crt-python.git --recursive
+if [ ! -d aws-crt-python ] 
+then
+    git clone https://github.com/awslabs/aws-crt-python.git --recursive
+fi
+
+# Check out and update latest version
+cd aws-crt-python/
+git checkout $(git tag | sort -V | tail -1)
+/opt/python/cp310-cp310/bin/python ./continuous-delivery/update-version.py
+cd ..
 
 # Compile wheels
 for PYBIN in /opt/python/*/bin; do
-    "${PYBIN}/pip" wheel /aws-crt-python --no-deps -w wheelhouse/
+    "${PYBIN}/pip" wheel aws-crt-python/ --no-deps -w wheelhouse/
 done
 
 # Bundle external shared libraries into the wheels
@@ -28,6 +36,6 @@ done
 
 # Install packages and test
 for PYBIN in /opt/python/*/bin/; do
-    "${PYBIN}/pip" install python-manylinux-demo --no-index -f /io/wheelhouse
-    (cd "$HOME"; "${PYBIN}/nosetests" pymanylinuxdemo)
+    "${PYBIN}/pip" install awscrt --no-index -f wheelhouse
+    (cd /io/aws-crt-python/; "${PYBIN}python" -m unittest discover --failfast --verbose)
 done
