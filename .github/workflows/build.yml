@@ -53,7 +53,6 @@ jobs:
           path: wheelhouse
   deploy:
     needs: build
-    #environment: Deploy
     runs-on: ubuntu-latest
     steps:
       - name: Download all workflow run artifacts
@@ -69,5 +68,5 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           draft: true
-          files: $(artifacts/*)
+          files: artifacts/*
           tag_name: ${{ steps.version.outputs.TAG_NAME }}
