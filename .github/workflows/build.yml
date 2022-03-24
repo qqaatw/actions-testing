@@ -44,7 +44,7 @@ jobs:
           run: |
             uname -m
             cd /io; ls -al
-            ${{matrix.pre-cmd}} sh build_wheels.sh
+            ${{ matrix.pre-cmd }} ./build_wheels.sh
             ls wheelhouse/
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -61,9 +61,8 @@ jobs:
         with:
           name: artifacts
       - name: Release
-        if: ${{ github.ref }}
         uses: softprops/action-gh-release@v1
         with:
           draft: true
-          files: ${artifacts/*}
-          tag_name: ${files=(artifacts/*);IFS='-' read -r -a array <<< "$files";echo ${array[1]}} # get package version
+          files: $(artifacts/*)
+          tag_name: $(files=(artifacts/*);IFS='-' read -r -a array <<< "$files";echo ${array[1]}) # get package version
