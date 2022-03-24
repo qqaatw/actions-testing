@@ -12,7 +12,7 @@ jobs:
       - name: Save some files
         run: |
           mkdir test_dir
-          "Test content" >> test_dir/content.txt
+          echo "Test content" >> test_dir/content.txt
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -23,6 +23,8 @@ jobs:
         with:
           name: artifacts
           path: artifacts
+      - name: list test_dir
+        run: ls artifacts
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
