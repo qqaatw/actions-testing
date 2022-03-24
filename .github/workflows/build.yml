@@ -18,9 +18,11 @@ jobs:
           - docker-image: quay.io/pypa/musllinux_1_1_x86_64
             platform: musllinux_1_1_x86_64
             qemu: false
+            pre-cmd: ""
           - docker-image: quay.io/pypa/musllinux_1_1_aarch64
             platform: musllinux_1_1_aarch64
             qemu: true
+            pre-cmd: ""
     steps:
       - name: Set up QEMU
         if: ${{matrix.qemu == true}}
@@ -35,6 +37,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Build wheels
         run: |
+          uname -m
           ls -al
           ${{matrix.pre-cmd}} build_wheels.sh
           ls wheelhouse/
