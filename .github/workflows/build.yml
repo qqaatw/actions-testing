@@ -31,16 +31,20 @@ jobs:
         with:
           image: tonistiigi/binfmt:latest
           platforms: all
-      - name: Set up environment
-        run: docker run --rm -e PLAT=$PLAT ${{matrix.docker-image}}
+      #- name: Set up environment
+      #  run: docker run --rm -e PLAT=$PLAT ${{matrix.docker-image}}
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Build wheels
-        run: |
-          uname -m
-          ls -al
-          ${{matrix.pre-cmd}} sh build_wheels.sh
-          ls wheelhouse/
+      - uses: addnab/docker-run-action@v3
+        with:
+          image: ${{matrix.docker-image}}
+          options: -v ${{ github.workspace }}:/io -e PLAT=$PLAT
+          run: |
+            uname -m
+            cd /io
+            ls -al
+            ${{matrix.pre-cmd}} sh build_wheels.sh
+            ls wheelhouse/
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
