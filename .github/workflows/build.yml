@@ -31,7 +31,7 @@ jobs:
           platforms: all
       - name: Set up environment
         run: |
-          docker run -rm -t ${{matrix.docker-image}}
+          docker run -t ${{matrix.docker-image}}
           uname -m
       - name: Checkout
         uses: actions/checkout@v3
