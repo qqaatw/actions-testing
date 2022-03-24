@@ -12,7 +12,7 @@ jobs:
       - name: Save some files
         run: |
           mkdir test_dir
-          echo "Test content" >> test_dir/content.txt
+          echo "Test content" >> test_dir/awscrt-0.13.6-cp310-cp310-musllinux_1_1_x86_64.whl
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -27,7 +27,7 @@ jobs:
         run: ls artifacts
       - name: Retrieve version
         run: |
-          echo "::set-output name=TAG_NAME::QQ"
+          echo "::set-output name=TAG_NAME::$(files=(artifacts/*);IFS='-' read -r -a array <<< $files;echo ${array[1]})" # get package version
         id: version
       - name: Release
         uses: softprops/action-gh-release@v1
