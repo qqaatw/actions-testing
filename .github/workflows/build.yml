@@ -30,7 +30,7 @@ jobs:
           image: tonistiigi/binfmt:latest
           platforms: all
       - name: Set up environment
-        uses: docker://${{matrix.docker-image}}
+        run: docker run --rm -it -e PLAT=$PLAT ${{matrix.docker-image}} bash
       - name: Checkout
         uses: actions/checkout@v3
       - name: Build wheels
