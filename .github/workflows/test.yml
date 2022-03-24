@@ -1,0 +1,31 @@
+name: Test workflow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Save some files
+        run: |
+          mkdir test_dir
+          "Test content" >> test_dir/content.txt
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts
+          path: test_dir
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: artifacts
+          path: artifacts
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: $(artifacts/*)
+          tag_name: $(files=(artifacts/*);IFS='-' read -r -a array <<< "$files";echo ${array[1]}) # get package version
