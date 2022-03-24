@@ -2,8 +2,13 @@
 
 name: Build
 
-on: [push]
-
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron '0 0 * * 0'
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,18 +36,16 @@ jobs:
         with:
           image: tonistiigi/binfmt:latest
           platforms: all
-      #- name: Set up environment
-      #  run: docker run --rm -e PLAT=$PLAT ${{matrix.docker-image}}
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
-      - uses: addnab/docker-run-action@v3
+      - name: Build wheels
+        uses: addnab/docker-run-action@v3 # https://aschmelyun.com/blog/using-docker-run-inside-of-github-actions/
         with:
           image: ${{matrix.docker-image}}
-          options: -v ${{ github.workspace }}:/io -e PLAT=$PLAT
+          options: -v ${{ github.workspace }}:/io -e PLAT=${{ matrix.platform }}
           run: |
             uname -m
-            cd /io
-            ls -al
+            cd /io; ls -al
             ${{matrix.pre-cmd}} sh build_wheels.sh
             ls wheelhouse/
       - name: Upload artifacts
@@ -58,9 +61,11 @@ jobs:
       - name: Download all workflow run artifacts
         uses: actions/download-artifact@v3
         with:
-          path: artifacts
+          name: artifacts
       - name: Release
+        if: ${{ github.ref }}
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: artifacts
+          draft: true
+          files: ${artifacts/*}
+          tag_name: ${files=(artifacts/*);IFS='-' read -r -a array <<< "$files";echo ${array[1]}} # get package version
