@@ -44,7 +44,7 @@ jobs:
           run: |
             uname -m
             cd /io; ls -al
-            ${{ matrix.pre-cmd }} ./build_wheels.sh
+            ${{ matrix.pre-cmd }} sh build_wheels.sh
             ls wheelhouse/
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
