@@ -25,9 +25,13 @@ jobs:
           path: artifacts
       - name: list test_dir
         run: ls artifacts
+      - name: Retrieve version
+        run: |
+          echo "::set-output name=TAG_NAME::QQ"
+        id: version
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           draft: true
           files: artifacts/*
-          tag_name: $(files=(artifacts/*);IFS='-' read -r -a array <<< "$files";echo ${array[1]}) # get package version
+          tag_name: ${{ steps.version.outputs.TAG_NAME }} #$(files=(artifacts/*);IFS='-' read -r -a array <<< "$files";echo ${array[1]}) # get package version
