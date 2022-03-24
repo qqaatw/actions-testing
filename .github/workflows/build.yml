@@ -1,36 +1,61 @@
-#- docker-image: quay.io/pypa/musllinux_1_1_aarch64
-#  platform: musllinux_1_1_aarch64
+
 
 name: Build
 
-on: [workflow_dispatch]
+on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: ${{ matrix.docker-image }}
-      env:
-        PLAT: ${{ matrix.platform }}
-      volumes:
-        - ${{ github.workspace }}:/io
-      options: --user root
     strategy:
+      fail-fast: false
       matrix:
         include:
           - docker-image: quay.io/pypa/musllinux_1_1_i686
             platform: musllinux_1_1_i686
+            qemu: false
+            pre-cmd: linux32
           - docker-image: quay.io/pypa/musllinux_1_1_x86_64
             platform: musllinux_1_1_x86_64
+            qemu: false
+          - docker-image: quay.io/pypa/musllinux_1_1_aarch64
+            platform: musllinux_1_1_aarch64
+            qemu: true
     steps:
-      - uses: actions/checkout@v1
+      - name: Set up QEMU
+        if: ${{matrix.qemu == true}}
+        id: qemu
+        uses: docker/setup-qemu-action@v1
+        with:
+          image: tonistiigi/binfmt:latest
+          platforms: all
+      - name: Set up environment
+        run: |
+          docker run -rm -t ${{matrix.docker-image}}
+          uname -m
+      - name: Checkout
+        uses: actions/checkout@v3
       - name: Build wheels
         run: |
           ls -al
-          sh build_wheels.sh
+          ${{matrix.pre-cmd}} build_wheels.sh
           ls wheelhouse/
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: artifacts
           path: wheelhouse
+  deploy:
+    needs: build
+    #environment: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: artifacts
