@@ -15,7 +15,7 @@ jobs:
       - name: Update index.html
         run: |
           pip install requests
-          python update_index.py
+          python update_index.py "https://api.github.com/repos/qqaatw/aws-crt-python-musllinux/releases"
       - name: Commit and push index.html
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
