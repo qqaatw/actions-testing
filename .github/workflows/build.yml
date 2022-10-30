@@ -10,29 +10,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - docker-image: quay.io/pypa/musllinux_1_1_i686
-            platform: musllinux_1_1_i686
-            qemu: false
-            pre-cmd: linux32
-          - docker-image: quay.io/pypa/musllinux_1_1_x86_64
-            platform: musllinux_1_1_x86_64
-            qemu: false
-            pre-cmd: ""
-          - docker-image: quay.io/pypa/musllinux_1_1_aarch64
-            platform: musllinux_1_1_aarch64
-            qemu: true
-            pre-cmd: ""
     steps:
       - name: Set up QEMU
-        if: ${{matrix.qemu == true}}
-        id: qemu
-        uses: docker/setup-qemu-action@v1
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v2
         with:
-          image: tonistiigi/binfmt:latest
           platforms: all
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -50,7 +32,8 @@ jobs:
           # configure cibuildwheel to build native archs ('auto'), and some
           # emulated ones
           CIBW_ARCHS_LINUX: auto aarch64
-          CIBW_SKIP: cp36-*
+          CIBW_BUILD: cp*-musllinux_*
+          CIBW_SKIP: cp36-* pp*
           CIBW_TEST_COMMAND: python -m unittest discover --failfast --verbose
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
