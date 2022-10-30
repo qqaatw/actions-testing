@@ -9,6 +9,6 @@ fi
 # Check out and update latest version
 cd aws-crt-python/
 git checkout $(git tag | sort -V | tail -1)
-/opt/python/cp310-cp310/bin/python ./continuous-delivery/update-version.py
+python ./continuous-delivery/update-version.py
 
 python -m cibuildwheel --output-dir wheelhouse
