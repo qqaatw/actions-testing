@@ -18,7 +18,7 @@ jobs:
       - name: Check new versions
         id: check
         run: |
-          echo "python check_and_update.py --task check" >> $GITHUB_OUTPUT
+          echo "$(python check_and_update.py --task check)" >> $GITHUB_OUTPUT
   build:
     needs: check
     if: ${{ needs.check.outputs.latest == false || github.event_name == 'workflow_dispatch' }} 
