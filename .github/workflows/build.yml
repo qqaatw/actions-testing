@@ -22,7 +22,7 @@ jobs:
         run: |
           pip install requests
           echo "$(python check_and_update.py --task check)" >> $GITHUB_OUTPUT
-          echo $GITHUB_OUTPUT
+          echo "$GITHUB_OUTPUT"
   build:
     needs: check
     if: ${{ needs.check.outputs.latest == 'false' || github.event_name == 'workflow_dispatch' }} 
