@@ -20,6 +20,7 @@ jobs:
       - name: Check new versions
         id: check
         run: |
+          pip install requests
           echo "$(python check_and_update.py --task check)" >> $GITHUB_OUTPUT
   build:
     needs: check
