@@ -22,7 +22,12 @@ jobs:
         run: |
           pip install requests
           echo "$(python check_and_update.py --task check)" >> $GITHUB_OUTPUT
-          echo "$GITHUB_OUTPUT"
+      - name: Summary
+        run: |
+          echo "Is the version latest: ${{steps.check.outputs.LATEST}}" >> $GITHUB_STEP_SUMMARY
+          echo "Upstream version: ${{steps.check.outputs.UPSTREAM}}" >> $GITHUB_STEP_SUMMARY
+          echo "Main version: ${{steps.check.outputs.MAIN}}" >> $GITHUB_STEP_SUMMARY
+
   build:
     needs: check
     if: ${{ needs.check.outputs.latest == 'false' || github.event_name == 'workflow_dispatch' }} 
