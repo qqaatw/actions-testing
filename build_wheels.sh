@@ -11,4 +11,4 @@ cd aws-crt-python/
 git checkout $(git tag | sort -V | tail -1)
 python ./continuous-delivery/update-version.py
 
-python -m cibuildwheel --output-dir wheelhouse
+python -m cibuildwheel --output-dir ../wheelhouse
