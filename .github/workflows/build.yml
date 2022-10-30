@@ -36,16 +36,22 @@ jobs:
           platforms: all
       - name: Checkout repository
         uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v3
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==2.11.2
       - name: Build wheels
-        uses: addnab/docker-run-action@v3 # https://aschmelyun.com/blog/using-docker-run-inside-of-github-actions/
-        with:
-          image: ${{matrix.docker-image}}
-          options: -v ${{ github.workspace }}:/io -e PLAT=${{ matrix.platform }}
-          run: |
+        run: |
             uname -m
-            cd /io; ls -al
-            ${{ matrix.pre-cmd }} sh build_wheels.sh
+            ls -al
+            sh build_wheels.sh
             ls wheelhouse/
+        env:
+          # configure cibuildwheel to build native archs ('auto'), and some
+          # emulated ones
+          CIBW_ARCHS_LINUX: auto aarch64
+          CIBW_SKIP: cp36-*
+          CIBW_TEST_COMMAND: python -m unittest discover --failfast --verbose
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
