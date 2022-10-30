@@ -8,11 +8,36 @@ on:
     - cron:  '0 0 * * 0'
   workflow_dispatch:
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
+    outputs:
+      latest: ${{ steps.check.outputs.LATEST }}
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v3
+      - name: Check new versions
+        id: check
+        run: |
+          echo "python check_and_update.py --task check" >> $GITHUB_OUTPUT
+  build:
+    needs: check
+    if: ${{ needs.check.outputs.latest == "false" || github.event_name == 'workflow_dispatch' }} 
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - qemu: false
+            cibw_archs: auto
+            cibw_build: cp*-musllinux_*
+            cibw_skip: cp36-* pp* *-win_arm64
+          - qemu: true
+            cibw_archs: aarch64
+            cibw_build: cp*-musllinux_*
+            cibw_skip: cp36-* pp* *-win_arm64
     steps:
       - name: Set up QEMU
-        if: runner.os == 'Linux'
+        if: ${{matrix.qemu == true}}
         uses: docker/setup-qemu-action@v2
         with:
           platforms: all
@@ -24,17 +49,16 @@ jobs:
         run: python -m pip install cibuildwheel==2.11.2
       - name: Build wheels
         run: |
-            uname -m
-            ls -al
-            sh build_wheels.sh
-            ls wheelhouse/
+          uname -m
+          ls -al
+          sh build_wheels.sh
+          ls wheelhouse/
         env:
-          # configure cibuildwheel to build native archs ('auto'), and some
-          # emulated ones
-          CIBW_ARCHS_LINUX: auto aarch64
-          CIBW_BUILD: cp*-musllinux_*
-          CIBW_SKIP: cp36-* pp*
+          CIBW_ARCHS: ${{matrix.cibw_archs}}
+          CIBW_BUILD: ${{matrix.cibw_build}}
+          CIBW_SKIP: ${{matrix.cibw_skip}}
           CIBW_TEST_COMMAND: python -m unittest discover --failfast --verbose
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -51,11 +75,26 @@ jobs:
           path: artifacts
       - name: Retrieve version
         run: |
-          echo "::set-output name=TAG_NAME::$(files=(artifacts/*);IFS='-' read -r -a array <<< $files;echo ${array[1]})" # get package version
+          echo "TAG_NAME=$(files=(artifacts/*);IFS='-' read -r -a array <<< $files;echo ${array[1]})" >> $GITHUB_OUTPUT # get package version
         id: version
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          draft: true
+          draft: false
           files: artifacts/*
           tag_name: ${{ steps.version.outputs.TAG_NAME }}
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+      - name: Update index.html
+        run: |
+          pip install requests
+          python check_and_update.py --task update
+      - name: Commit and push index.html
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Update index.html
+          file_pattern: index.html
