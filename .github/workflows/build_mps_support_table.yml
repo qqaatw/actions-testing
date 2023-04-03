@@ -1,4 +1,4 @@
-name: Test MPS supporting matrix
+name: Build MPS Support table
 
 on:
   push:
@@ -14,7 +14,6 @@ jobs:
         with:
           repository: "pytorch/pytorch"
           path: "pytorch"
-          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v3
         with:

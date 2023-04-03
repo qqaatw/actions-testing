@@ -24,6 +24,7 @@ def checkout(repo_path, commit):
 
     if commit == "latest":
         commit = requests.get(GITHUB_UPSTREAM_RELEASE_ENDPOINT).json()[0]["tag_name"]
+    pytorch_repo.fetch("origin", commit)
     pytorch_repo.checkout(commit)
     return commit
 
