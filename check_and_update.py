@@ -24,8 +24,8 @@ def checkout(repo_path, commit):
 
     if commit == "latest":
         commit = requests.get(GITHUB_UPSTREAM_RELEASE_ENDPOINT).json()[0]["tag_name"]
-    pytorch_repo.remotes[0].fetch(commit)
-    pytorch_repo.create_head(commit, pytorch_repo.refs[commit])
+    if commit not in pytorch_repo.heads:
+        pytorch_repo.create_head(commit, pytorch_repo.remotes[0].fetch(commit)[0])
     pytorch_repo.heads[commit].checkout()
     return commit
 
