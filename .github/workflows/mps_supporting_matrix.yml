@@ -1,4 +1,4 @@
-name: Test2
+name: Test MPS supporting matrix
 
 on:
   workflow_dispatch:
@@ -8,14 +8,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      - name: Checkout PyTorch
+        uses: actions/checkout@v3
+        with:
+          repository: "pytorch/pytorch"
+          path: "pytorch"
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
           python-version: "3.10"
+      - name: Install requirements
+        run: pip install -r requirements.txt
       - name: Update index.html
-        run: |
-          pip install requests
-          python update_index.py "https://api.github.com/repos/qqaatw/aws-crt-python-musllinux/releases"
+        run: python check_and_update.py --task update
       - name: Commit and push index.html
         uses: stefanzweifel/git-auto-commit-action@v4
         with:

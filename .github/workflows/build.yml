@@ -1,11 +1,11 @@
 name: Build
 
 on:
-  push:
-    branches:
-      - main
-  schedule:
-    - cron:  '0 0 * * 0'
+  #push:
+  #  branches:
+  #    - main
+  #schedule:
+  #  - cron:  '0 0 * * 0'
   workflow_dispatch:
 jobs:
   check:
@@ -21,7 +21,7 @@ jobs:
         id: check
         run: |
           pip install requests
-          echo "$(python check_and_update.py --task check)" >> $GITHUB_OUTPUT
+          echo "$(python check_and_update_awscrt.py --task check)" >> $GITHUB_OUTPUT
       - name: Summary
         run: |
           echo "Is the version latest: ${{steps.check.outputs.LATEST}}" >> $GITHUB_STEP_SUMMARY

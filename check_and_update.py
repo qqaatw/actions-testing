@@ -1,39 +1,101 @@
 import requests
+import yaml
+import importlib
+import os
+import sys
 
 from argparse import ArgumentParser
+from git import Git
 
-GITHUB_UPSTREAM_RELEASE_ENDPOINT = "https://api.github.com/repos/awslabs/aws-crt-python/releases"
-GITHUB_RELEASE_ENDPOINT = "https://api.github.com/repos/qqaatw/aws-crt-python-musllinux/releases"
+GITHUB_UPSTREAM_RELEASE_ENDPOINT = "https://api.github.com/repos/pytorch/pytorch/releases"
 
-def check():
-    latest_upstream_release_tag = requests.get(GITHUB_UPSTREAM_RELEASE_ENDPOINT).json()[0]["tag_name"].replace("v","")
-    latest_release_tag = requests.get(GITHUB_RELEASE_ENDPOINT).json()[0]["tag_name"]
+def load_config(filename="config.yml"):
+    with open(filename, "rb") as f:
+        config = yaml.safe_load(f)
+    return config
 
-    if latest_upstream_release_tag == latest_release_tag:
-        print(f"LATEST=true\nUPSTREAM={latest_upstream_release_tag}\nMAIN={latest_release_tag}")
-    else:
-        print(f"LATEST=false\nUPSTREAM={latest_upstream_release_tag}\nMAIN={latest_release_tag}")
+def load_template(filename="template.html"):
+    with open(filename, "r", encoding="utf8") as f:
+        template = f.read()
+    return template
 
-def update():
-    template ="""<!DOCTYPE html>
-    <html>
-    <body>
-        {}
-    <body>
-    </html>
-    """
+def checkout(repo_path, commit):
+    pytorch_repo = Git(repo_path)
 
-    releases = requests.get(GITHUB_RELEASE_ENDPOINT).json()
-    asset_list = []
+    if commit == "latest":
+        commit = requests.get(GITHUB_UPSTREAM_RELEASE_ENDPOINT).json()[0]["tag_name"]
+    pytorch_repo.checkout(commit)
+    return commit
 
-    for release in releases:
-        for asset in release["assets"]:
-            asset_list.append(f'<a href="{asset["browser_download_url"]}">{asset["name"]}</a>')
+def load_supported_ops(commit="master"):
+    pytorch_path = os.path.abspath("./pytorch")
+    commit = checkout(pytorch_path, commit)
+    if sys.path[0] != pytorch_path:
+        sys.path.insert(0, pytorch_path)
+    gen_module = importlib.import_module("torchgen.gen")
+    model = importlib.import_module("torchgen.model")
+    
+    # The reload order matters
+    importlib.reload(model)
+    importlib.reload(gen_module)
 
-    with open("index.html", "w", encoding="utf8") as f:
-        f.write(template.format("<br>".join(asset_list)))
+    aten_path = "pytorch/aten/src/ATen/"
+    native_yaml_path = os.path.join(aten_path, "native/native_functions.yaml")
+    tags_yaml_path = os.path.join(aten_path, "native/tags.yaml")
 
+    parsed_yaml = gen_module.parse_native_yaml(native_yaml_path, tags_yaml_path)
 
+    native_functions, backend_indices = (
+        parsed_yaml.native_functions,
+        parsed_yaml.backend_indices,
+    )
+
+    MPS_supported_ops = {}
+    for k, v in backend_indices[model.DispatchKey.MPS].index.items():
+        function_name = f"{k.name.base}{ '.' + k.overload_name if k.overload_name != '' else ''}"
+        kernel_name = v.kernel
+        structured = v.structured
+        cpp_namespace = v.cpp_namespace
+        MPS_supported_ops[function_name] = {
+            "kernel": kernel_name,
+            "structuted": structured,
+            "cpp_namespace": cpp_namespace,
+        }
+    return MPS_supported_ops, commit
+
+def update(output_file="index.html"):
+    template = load_template()
+    config = load_config()
+
+    #latest_upstream_releases = requests.get(GITHUB_UPSTREAM_RELEASE_ENDPOINT).json() #[0]["tag_name"].replace("v","")
+    #num_releases_fetched = min(len(latest_upstream_releases), config["num_releases_fetched"])
+    #print(latest_upstream_release_tag)
+    
+
+    master_supported_ops, _ = load_supported_ops()
+    latest_release_supported_ops, latest_release_commit = load_supported_ops("latest")
+
+    table_header = f"""<tr>
+                <th data-sortable="true">Function name</th>
+                <th data-sortable="true">Kernel Name</th>
+                <th data-sortable="true">In {latest_release_commit}</th>
+                <th data-sortable="true">Starting from macOS version</th>
+                <th>Note</th>
+            </tr>"""
+    table_rows = []
+    for k, v in master_supported_ops.items():
+        included_in_latest = True if k in latest_release_supported_ops else False
+        starting_macOS_version = "N/A"
+        note = "N/A"
+        if k in config["details"]:
+            starting_macOS_version = config["details"][k].get("starting_macOS_version", "N/A")
+            note = config["details"][k].get("note", "N/A")
+
+        table_rows.append(f"<tr><td>{k}</td><td>{v['kernel']}</td><td>{included_in_latest}</td><td>{starting_macOS_version}</td><td>{note}</td></tr>")
+    
+    with open(output_file, "w", encoding="utf8") as f:
+        f.write(template.format(table_header, "\n".join(table_rows)))
+    
 if __name__ == "__main__":
     parser = ArgumentParser()
     
@@ -41,7 +103,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.task == "check":
-        check()
-    elif args.task == "update":
+    if args.task == "update":
         update()
