@@ -18,7 +18,9 @@ jobs:
         with:
           python-version: "3.10"
       - name: Install requirements
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install -r pytorch/requirements.txt
       - name: Update index.html
         run: python check_and_update.py --task update
       - name: Commit and push index.html
