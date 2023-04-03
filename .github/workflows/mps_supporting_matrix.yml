@@ -1,6 +1,7 @@
 name: Test MPS supporting matrix
 
 on:
+  push:
   workflow_dispatch:
 jobs:
   test:
@@ -13,6 +14,7 @@ jobs:
         with:
           repository: "pytorch/pytorch"
           path: "pytorch"
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
