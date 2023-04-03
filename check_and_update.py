@@ -5,7 +5,7 @@ import os
 import sys
 
 from argparse import ArgumentParser
-from git import Git
+from git import Repo
 
 GITHUB_UPSTREAM_RELEASE_ENDPOINT = "https://api.github.com/repos/pytorch/pytorch/releases"
 
@@ -20,12 +20,13 @@ def load_template(filename="template.html"):
     return template
 
 def checkout(repo_path, commit):
-    pytorch_repo = Git(repo_path)
+    pytorch_repo = Repo(repo_path)
 
     if commit == "latest":
         commit = requests.get(GITHUB_UPSTREAM_RELEASE_ENDPOINT).json()[0]["tag_name"]
-    pytorch_repo.fetch("origin", commit)
-    pytorch_repo.checkout(commit)
+    pytorch_repo.remotes[0].fetch(commit)
+    pytorch_repo.create_head(commit, pytorch_repo.refs[commit])
+    pytorch_repo.heads[commit].checkout()
     return commit
 
 def load_supported_ops(commit="master"):
