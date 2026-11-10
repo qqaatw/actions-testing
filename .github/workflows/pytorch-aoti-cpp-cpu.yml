@@ -27,6 +27,13 @@ jobs:
       BUILD_ENVIRONMENT: macos-cpu
       BUILD_TEST: "1"
       CMAKE_BUILD_TYPE: Release
+      CC: clang
+      CXX: clang++
+      CXXFLAGS: -stdlib=libc++
+      LDFLAGS: -stdlib=libc++
+      CMAKE_CXX_FLAGS: -stdlib=libc++
+      CMAKE_EXE_LINKER_FLAGS: -stdlib=libc++
+      CMAKE_SHARED_LINKER_FLAGS: -stdlib=libc++
       MAX_JOBS: ${{ inputs.max_jobs }}
       USE_CUDA: "0"
       USE_MPS: "0"
@@ -63,6 +70,14 @@ jobs:
           brew update
           brew install ccache libomp ninja
 
+      - name: Show C++ standard library
+        run: |
+          set -euxo pipefail
+          clang++ --version
+          printf 'int main() { return 0; }\n' > /tmp/libcxx-check.cpp
+          clang++ -stdlib=libc++ -v /tmp/libcxx-check.cpp -o /tmp/libcxx-check
+          otool -L /tmp/libcxx-check
+
       - name: Install Python dependencies
         working-directory: pytorch
         run: |
@@ -90,8 +105,41 @@ jobs:
               python3 tools/amd_build/build_amd.py
             fi
             TEST_ENVS=(CPP_TESTS_DIR="${BUILD_BIN_DIR}" LD_LIBRARY_PATH="${TORCH_LIB_DIR}" DYLD_LIBRARY_PATH="${TORCH_LIB_DIR}")
+            LOG_DIR="test/test-reports/python-pytest/cpp.test_aoti_abi_check"
+            mkdir -p "${LOG_DIR}"
 
-            /usr/bin/env "${TEST_ENVS[@]}" python test/run_test.py --cpp --verbose -i cpp/test_aoti_abi_check -dist=loadfile
+            set +e
+            /usr/bin/env "${TEST_ENVS[@]}" python test/run_test.py --cpp --verbose -i cpp/test_aoti_abi_check -dist=loadfile 2>&1 | tee "${LOG_DIR}/run.log"
+            test_status="${PIPESTATUS[0]}"
+            set -e
+            return "${test_status}"
           }
 
           test_inductor_aoti_cpp
+
+      - name: Print test reports
+        if: always()
+        working-directory: pytorch
+        run: |
+          set -euo pipefail
+
+          if [[ ! -d test/test-reports ]]; then
+            echo "No test reports directory found."
+            exit 0
+          fi
+
+          find test/test-reports -type f | sort
+
+          while IFS= read -r report; do
+            echo "::group::${report}"
+            cat "${report}"
+            echo "::endgroup::"
+          done < <(find test/test-reports -type f | sort)
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aoti-abi-test-reports
+          path: pytorch/test/test-reports/
+          if-no-files-found: ignore
