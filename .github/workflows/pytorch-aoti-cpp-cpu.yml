@@ -1,0 +1,97 @@
+name: PyTorch AOTI ABI macOS CPU
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PyTorch pull request number to test
+        required: true
+        type: string
+      python_version:
+        description: Python version for the build
+        required: false
+        default: "3.12"
+        type: string
+      max_jobs:
+        description: Parallel build jobs
+        required: false
+        default: "2"
+        type: string
+
+jobs:
+  test-aoti-cpp:
+    name: Test AOTI ABI on macOS Arm
+    runs-on: macos-15
+    timeout-minutes: 360
+    env:
+      BUILD_ENVIRONMENT: macos-cpu
+      BUILD_TEST: "1"
+      CMAKE_BUILD_TYPE: Release
+      MAX_JOBS: ${{ inputs.max_jobs }}
+      USE_CUDA: "0"
+      USE_MPS: "0"
+      USE_ROCM: "0"
+      USE_XPU: "0"
+      BUILD_BIN_DIR: ${{ github.workspace }}/pytorch/build/bin
+      TORCH_LIB_DIR: ${{ github.workspace }}/pytorch/torch/lib
+
+    steps:
+      - name: Checkout PyTorch PR
+        uses: actions/checkout@v4
+        with:
+          repository: pytorch/pytorch
+          ref: refs/pull/${{ inputs.pr_number }}/head
+          path: pytorch
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Show PyTorch revision
+        working-directory: pytorch
+        run: |
+          git log --oneline -1
+          git submodule status
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+          cache: pip
+          cache-dependency-path: pytorch/requirements.txt
+
+      - name: Install system dependencies
+        run: |
+          brew update
+          brew install ccache libomp ninja
+
+      - name: Install Python dependencies
+        working-directory: pytorch
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --group dev
+          python -m pip install cmake ninja
+          grep -v -E '^(mkl-static|mkl-include|intel-openmp)' .ci/docker/requirements-ci.txt > requirements-ci-macos.txt
+          python -m pip install -r requirements-ci-macos.txt
+
+      - name: Build PyTorch CPU
+        working-directory: pytorch
+        run: |
+          export CMAKE_PREFIX_PATH="${pythonLocation}:${CMAKE_PREFIX_PATH:-}"
+          echo "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}" >> "$GITHUB_ENV"
+          python -m pip install --no-build-isolation -v -e .
+
+      - name: Run AOTI C++ tests
+        working-directory: pytorch
+        run: |
+          set -euxo pipefail
+
+          test_inductor_aoti_cpp() {
+            if [[ "$BUILD_ENVIRONMENT" == *rocm* ]]; then
+              # We need to hipify before building again
+              python3 tools/amd_build/build_amd.py
+            fi
+            TEST_ENVS=(CPP_TESTS_DIR="${BUILD_BIN_DIR}" LD_LIBRARY_PATH="${TORCH_LIB_DIR}" DYLD_LIBRARY_PATH="${TORCH_LIB_DIR}")
+
+            /usr/bin/env "${TEST_ENVS[@]}" python test/run_test.py --cpp --verbose -i cpp/test_aoti_abi_check -dist=loadfile
+          }
+
+          test_inductor_aoti_cpp
